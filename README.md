@@ -1,5 +1,21 @@
 # ETL for Medical Image
 
+## Reference resource
+
+[Real Distributed Image Processing with Apache Spark](https://xebia.com/blog/real-distributed-image-processing-with-apache-spark/)
+
+[Python for medical imaging course](https://www.youtube.com/watch?v=i0Lt147_dGM) [3:00:00]
+
+[Medical Image Encryption](https://www.mdpi.com/2073-431X/12/8/160)
+
+## Set up
+
+Install the required packages using the following command:
+
+```bash
+uv sync
+```
+
 ## Project Folder
 
 ```
