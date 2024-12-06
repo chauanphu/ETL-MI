@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from datetime import datetime
 from pyspark.sql import SparkSession
 from scripts import extract, transform, load
@@ -18,7 +18,7 @@ def upload_to_minio():
     # Your existing upload logic
     pass
 
-with DAG('etl_pipeline', default_args=default_args, schedule_interval=None) as dag:
+with DAG('etl_pipeline', default_args=default_args, schedule='@daily') as dag:
     download_task = PythonOperator(
         task_id='download_kaggle_data',
         python_callable=extract.download_data
