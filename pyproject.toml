@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "apache-airflow>=2.10.3",
+    "cryptography>=44.0.0",
+    "findspark>=2.0.1",
     "jupyter>=1.1.1",
     "kaggle>=1.6.17",
     "kagglehub>=0.3.4",

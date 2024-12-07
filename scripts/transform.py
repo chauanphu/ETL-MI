@@ -1,15 +1,14 @@
 import numpy as np
+from pyspark import SparkContext
 from pyspark.sql import SparkSession
 import os
 import nibabel as nib
+from airflow.decorators import task
 
-def process_nifti_files():
-    # Initialize Spark Session
-    spark = SparkSession.builder \
-        .appName("NIfTI_Processing") \
-        .getOrCreate()
-    
-    nifti_dir = '/tmp/ct_scan_data'
+@task.pyspark(conn_id='NIfTI_Processing')
+def process_nifti_files(spark: SparkSession, sc: SparkContext):
+
+    nifti_dir = './tmp/ct_scan_data'
     nifti_files = [os.path.join(nifti_dir, f) for f in os.listdir(nifti_dir) if f.endswith('.nii')]
     nifti_rdd = spark.sparkContext.parallelize(nifti_files)
     
