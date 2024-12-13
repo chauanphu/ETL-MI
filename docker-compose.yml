@@ -1,6 +1,70 @@
-version: '3.7'
+version: '3.8'
 
 services:
-  web:
-    build: .
-    command: python manage.py runserver
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: chauanphu
+      MINIO_ROOT_PASSWORD: 258456C@p
+      MINIO_ADDRESS: ":9000"
+      MINIO_CONSOLE_ADDRESS: ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - nginx-network
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - local-network
+
+  airflow:
+    image: apache/airflow:2.1.2
+    container_name: airflow_webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    command: webserver
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - local-network
+      - nginx-network
+
+  airflow_scheduler:
+    image: apache/airflow:2.1.2
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    command: scheduler
+    depends_on:
+      - postgres
+      - minio
+    networks:
+     - local-network
+
+volumes:
+  minio-data:
+  postgres-data:
+
+networks:
+  local-network:
+  nginx-network:
+    external: true

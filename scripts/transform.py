@@ -1,31 +1,30 @@
-import numpy as np
-from pyspark import SparkContext
 from pyspark.sql import SparkSession
-import os
+from pyspark.sql.functions import udf, input_file_name
+from pyspark.sql.types import BinaryType, StringType
 import nibabel as nib
-from airflow.decorators import task
+import base64
+from cryptography.fernet import Fernet
+import io
 
-@task.pyspark(conn_id='NIfTI_Processing')
-def process_nifti_files(spark: SparkSession, sc: SparkContext):
+def load_nifti_and_encrypt(file_path: str, encryption_key: str) -> bytes:
+    # Load the NIfTI image using nibabel
+    img = nib.load(file_path)
 
-    nifti_dir = './tmp/ct_scan_data'
-    nifti_files = [os.path.join(nifti_dir, f) for f in os.listdir(nifti_dir) if f.endswith('.nii')]
-    nifti_rdd = spark.sparkContext.parallelize(nifti_files)
+    # Convert the image data into a byte stream
+    # NIfTI images are typically 3D arrays and metadata.
+    # You can write the entire NIfTI image (header + data) to a byte buffer:
+    buffer = io.BytesIO()
+    nib.save(img, buffer)
+    raw_bytes = buffer.getvalue()
     
-    def compute_mean(file_path):
-        try:
-            nii_img = nib.load(file_path)
-            data = nii_img.get_fdata()
-            mean = np.mean(data)
-            return (file_path, mean)
-        except Exception as e:
-            return (file_path, str(e))
+    # Encrypt using Fernet (symmetric encryption)
+    f = Fernet(encryption_key)
+    encrypted_bytes = f.encrypt(raw_bytes)
     
-    results = nifti_rdd.map(compute_mean).collect()
-    
-    # Optionally, store results somewhere
-    with open('/tmp/processing_results.txt', 'w') as f:
-        for file, mean in results:
-            f.write(f"{file}: {mean}\n")
-    
-    spark.stop()
+    return encrypted_bytes
+
+# UDF wrapping
+def encrypt_file_udf(encryption_key: str):
+    def inner(file_path: str) -> bytes:
+        return load_nifti_and_encrypt(file_path, encryption_key)
+    return inner
