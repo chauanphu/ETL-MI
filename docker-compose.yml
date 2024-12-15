@@ -1,4 +1,12 @@
 version: '3.8'
+x-airflow-common-env: &airflow_common_env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__FERNET_KEY: '3ntyUrTEVvEyH7jjWfKf/8iPqYtJSXM/UWy+OUR8GcM='  # e.g. use `openssl rand -base64 32`
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+  AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+  AIRFLOW__CORE__DAG_FOLDER: /opt/airflow/dags
+  AIRFLOW__CORE__BASE_URL: http://localhost:8080
+  AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
 
 services:
   minio:
@@ -17,52 +25,76 @@ services:
 
   postgres:
     image: postgres:13
+    container_name: airflow_postgres
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./pg_data:/var/lib/postgresql/data
+    networks:
+      - local-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  airflow-init:
+    image: apache/airflow:2.4.3
+    container_name: airflow_init
+    command: ["airflow", "db", "init"]
+    environment:
+      <<: *airflow_common_env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
     networks:
       - local-network
 
-  airflow:
-    image: apache/airflow:2.1.2
+  airflow-webserver:
+    image: apache/airflow:2.4.3
     container_name: airflow_webserver
+    command: ["airflow", "webserver"]
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
-    volumes:
-      - ./dags:/usr/local/airflow/dags
-    command: webserver
+      <<: *airflow_common_env
     depends_on:
-      - postgres
-      - minio
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    restart: unless-stopped
     networks:
       - local-network
       - nginx-network
 
-  airflow_scheduler:
-    image: apache/airflow:2.1.2
+  airflow-scheduler:
+    image: apache/airflow:2.4.3
+    container_name: airflow_scheduler
+    command: ["airflow", "scheduler"]
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
-    volumes:
-      - ./dags:/usr/local/airflow/dags
-    command: scheduler
+      <<: *airflow_common_env
     depends_on:
-      - postgres
-      - minio
+      airflow-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    restart: unless-stopped
     networks:
-     - local-network
+      - local-network
 
 volumes:
   minio-data:
-  postgres-data:
 
 networks:
   local-network:

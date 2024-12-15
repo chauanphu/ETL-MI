@@ -2,3 +2,6 @@
 rawdata
 __pycache__
 output
+pg_data
+logs
+plugins
