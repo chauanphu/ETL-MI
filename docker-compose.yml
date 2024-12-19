@@ -59,7 +59,7 @@ services:
       - local-network
 
   airflow-webserver:
-    image: apache/airflow:2.4.3
+    image: my-airflow:latest
     container_name: airflow_webserver
     command: ["airflow", "webserver"]
     environment:
@@ -77,7 +77,7 @@ services:
       - nginx-network
 
   airflow-scheduler:
-    image: apache/airflow:2.4.3
+    image: my-airflow:latest
     container_name: airflow_scheduler
     command: ["airflow", "scheduler"]
     environment:

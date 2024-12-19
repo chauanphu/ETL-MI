@@ -6,7 +6,7 @@ from airflow.decorators import task
 import logging
 import nibabel as nib
 import numpy as np
-from pyspark import SparkContext
+from pyspark import RDD, SparkContext
 from pyspark.sql import SparkSession
 
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +45,7 @@ def extract_metadata():
     return metadata
 
 @task.pyspark(conn_id='NIfTI_Processing')
-def extract_image_data(spark: SparkSession, sc: SparkContext, metadata: pd.DataFrame):
+def extract_image_data(spark: SparkSession, sc: SparkContext, metadata: pd.DataFrame) -> RDD:
     # Convert DataFrame to np array
     image_paths: np.ndarray = metadata.to_numpy().flatten()
     # Extract image data
